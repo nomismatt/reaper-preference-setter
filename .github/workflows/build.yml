@@ -35,8 +35,12 @@ jobs:
       - name: Install PyInstaller
         run: pip install pyinstaller
 
-      - name: Build executable
-        run: pyinstaller --onefile --console --name "REAPER-Preference-Setter" configure_reaper.py
+      - name: Build .app with PyInstaller
+        run: |
+          pyinstaller --windowed --onedir \
+            --name "REAPER Preference Setter" \
+            --osx-bundle-identifier com.nomismatt.reaper-preference-setter \
+            configure_reaper.py
 
       - name: Import Apple Certificate
         run: |
@@ -58,24 +62,47 @@ jobs:
           security unlock-keychain -p "" github_build.keychain
           security set-key-partition-list -S apple-tool:,apple: -k "" -D "Developer" -t private github_build.keychain
 
-      - name: Codesign executable
+      - name: Codesign .app bundle
         run: |
+          APP="dist/REAPER Preference Setter.app"
+          # Sign all .so and .dylib files first
+          find "${APP}" -iname '*.so' -or -iname '*.dylib' | while read libfile; do
+            codesign -s "${{ secrets.APPLE_CERTIFICATE_NAME }}" \
+              --entitlements entitlements.plist \
+              --deep "${libfile}" \
+              --force --timestamp --options runtime
+          done
+          # Sign the whole .app bundle
           codesign -s "${{ secrets.APPLE_CERTIFICATE_NAME }}" \
             --entitlements entitlements.plist \
-            --force \
-            --timestamp \
-            --options runtime \
-            "dist/REAPER-Preference-Setter"
-          codesign --verify --verbose=4 "dist/REAPER-Preference-Setter"
+            --deep --force --timestamp --options runtime \
+            "${APP}"
+          codesign --verify --verbose=4 "${APP}"
 
       - name: Create DMG
         run: |
-          mkdir -p dmg_contents
-          cp "dist/REAPER-Preference-Setter" dmg_contents/
-          hdiutil create -volname "REAPER Preference Setter" \
-            -srcfolder dmg_contents \
-            -ov -format UDZO \
-            "REAPER-Preference-Setter-macOS.dmg"
+          brew install create-dmg || true
+          max_tries=5
+          i=0
+          until create-dmg \
+            --volname "REAPER Preference Setter" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --app-drop-link 450 185 \
+            --hide-extension "REAPER Preference Setter.app" \
+            "REAPER-Preference-Setter-macOS.dmg" \
+            "dist/REAPER Preference Setter.app"
+          do
+            if [ $i -eq $max_tries ]; then
+              echo "create-dmg failed, falling back to hdiutil"
+              hdiutil create -volname "REAPER Preference Setter" \
+                -srcfolder "dist/REAPER Preference Setter.app" \
+                -ov -format UDZO \
+                "REAPER-Preference-Setter-macOS.dmg"
+              break
+            fi
+            i=$((i+1))
+          done
 
       - name: Notarize DMG
         run: |
