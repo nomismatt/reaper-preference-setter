@@ -139,7 +139,7 @@ jobs:
         run: pip install pyinstaller
 
       - name: Build executable
-        run: pyinstaller --onefile --console --name "REAPER-Preference-Setter" configure_reaper.py
+        run: pyinstaller --windowed --onefile --name "REAPER-Preference-Setter" --icon NUL configure_reaper.py
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
@@ -147,27 +147,3 @@ jobs:
           draft: true
           files: |
             dist/REAPER-Preference-Setter.exe
-
-  build_linux:
-    needs: create_release
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install PyInstaller
-        run: pip install pyinstaller
-
-      - name: Build executable
-        run: pyinstaller --onefile --console --name "REAPER-Preference-Setter" configure_reaper.py
-
-      - name: Upload to release
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: true
-          files: |
-            dist/REAPER-Preference-Setter
