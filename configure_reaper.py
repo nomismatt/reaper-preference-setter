@@ -145,8 +145,9 @@ class ReaperConfigApp:
         self.lines = read_ini(self.ini_path)
         self.section_start = find_reaper_section(self.lines)
         if self.section_start is None:
-            messagebox.showerror("Error", "Could not find [REAPER] section in reaper.ini")
-            sys.exit(1)
+            # Fresh install — create the section
+            self.lines.append("\n[REAPER]\n")
+            self.section_start = len(self.lines) - 1
 
         self.section_end = find_next_section(self.lines, self.section_start)
 
