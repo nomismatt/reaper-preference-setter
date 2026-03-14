@@ -11,21 +11,36 @@ A Python script to quickly configure REAPER DAW preferences on any machine. Usef
 - **Media path** — Sets the relative media recording folder (e.g., `Audio`)
 - **Peak files** — Stores `.reapeaks` in a `peaks/` subfolder relative to media
 
-## Usage
+## Download
 
-### macOS — Double-click
+Go to the [Releases page](https://github.com/nomismatt/reaper-preference-setter/releases) and download the executable for your OS:
 
-1. Download this repo (or clone it)
-2. Double-click **`configure_reaper.command`** in Finder
-3. A Terminal window will open and walk you through the settings
+- **REAPER-Preference-Setter-macOS** — Mac
+- **REAPER-Preference-Setter-Windows.exe** — Windows
+- **REAPER-Preference-Setter-Linux** — Linux
 
-> If macOS blocks it, right-click the file and choose **Open**, then click **Open** in the dialog.
+No Python installation required.
 
-### Command line (macOS, Windows, Linux)
+### macOS: first-time setup
+
+macOS may block the downloaded executable. To allow it:
+
+1. Try to open the file — macOS will show a warning
+2. Go to **System Settings > Privacy & Security**
+3. Scroll down — you'll see a message about the blocked app
+4. Click **Open Anyway**
+
+You only need to do this once.
+
+## Alternative: run from source
+
+If you have Python installed, you can run the script directly:
 
 ```bash
 python3 configure_reaper.py
 ```
+
+Or on macOS, double-click **`configure_reaper.command`** in Finder.
 
 ### Dry run
 
@@ -47,8 +62,9 @@ A backup is always created before any changes are made, so you can safely revert
 
 ## Requirements
 
-- Python 3.6+ (ships with macOS)
 - REAPER should be **closed** before running (the script will warn you if it's open)
+- The standalone executables have no other requirements
+- Running from source requires Python 3.6+
 
 ## How it works
 

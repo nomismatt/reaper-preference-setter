@@ -32,6 +32,10 @@ jobs:
       - name: Build executable
         run: pyinstaller --onefile --console --name "${{ matrix.artifact }}" configure_reaper.py
 
+      - name: Ad-hoc codesign (macOS)
+        if: runner.os == 'macOS'
+        run: codesign --force --sign - "dist/${{ matrix.artifact }}"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
