@@ -68,24 +68,34 @@ jobs:
             "dist/REAPER-Preference-Setter"
           codesign --verify --verbose=4 "dist/REAPER-Preference-Setter"
 
-      - name: Zip for notarization
+      - name: Create DMG
         run: |
-          ditto -c -k "dist/REAPER-Preference-Setter" "REAPER-Preference-Setter-macOS.zip"
+          mkdir -p dmg_contents
+          cp "dist/REAPER-Preference-Setter" dmg_contents/
+          hdiutil create -volname "REAPER Preference Setter" \
+            -srcfolder dmg_contents \
+            -ov -format UDZO \
+            "REAPER-Preference-Setter-macOS.dmg"
 
-      - name: Notarize and staple
+      - name: Notarize DMG
         run: |
-          xcrun notarytool submit "REAPER-Preference-Setter-macOS.zip" \
+          xcrun notarytool submit "REAPER-Preference-Setter-macOS.dmg" \
             --apple-id "${{ secrets.APPLE_DEVELOPER_ID_USER }}" \
             --password "${{ secrets.APPLE_DEVELOPER_ID_PASSWORD }}" \
             --team-id "${{ secrets.APPLE_DEVELOPER_ID_TEAM }}" \
             --wait --verbose
+
+      - name: Staple DMG
+        run: |
+          xcrun stapler staple "REAPER-Preference-Setter-macOS.dmg"
+          xcrun stapler validate "REAPER-Preference-Setter-macOS.dmg"
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
           files: |
-            REAPER-Preference-Setter-macOS.zip
+            REAPER-Preference-Setter-macOS.dmg
 
   build_windows:
     needs: create_release
