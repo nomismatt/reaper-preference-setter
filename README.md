@@ -13,16 +13,19 @@ A Python script to quickly configure REAPER DAW preferences on any machine. Usef
 
 ## Usage
 
+### macOS — Double-click
+
+1. Download this repo (or clone it)
+2. Double-click **`configure_reaper.command`** in Finder
+3. A Terminal window will open and walk you through the settings
+
+> If macOS blocks it, right-click the file and choose **Open**, then click **Open** in the dialog.
+
+### Command line (macOS, Windows, Linux)
+
 ```bash
 python3 configure_reaper.py
 ```
-
-The script will:
-1. Locate your `reaper.ini` (macOS, Windows, and Linux supported)
-2. Show your current settings
-3. Create a timestamped backup of `reaper.ini`
-4. Prompt you for the save path and project template
-5. Apply all settings
 
 ### Dry run
 
@@ -32,9 +35,19 @@ Preview changes without modifying anything:
 python3 configure_reaper.py --dry-run
 ```
 
+## What happens when you run it
+
+1. Locates your `reaper.ini` (macOS, Windows, and Linux supported)
+2. Shows your current settings
+3. Creates a timestamped backup of `reaper.ini`
+4. Prompts you for the save path and project template
+5. Applies all settings
+
+A backup is always created before any changes are made, so you can safely revert if needed.
+
 ## Requirements
 
-- Python 3.6+
+- Python 3.6+ (ships with macOS)
 - REAPER should be **closed** before running (the script will warn you if it's open)
 
 ## How it works
