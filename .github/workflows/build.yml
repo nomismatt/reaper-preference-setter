@@ -3,21 +3,27 @@ name: Build Executables
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
+
+permissions:
+  contents: write
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: macos-latest
-            artifact: REAPER-Preference-Setter-macOS
-          - os: windows-latest
-            artifact: REAPER-Preference-Setter-Windows.exe
-          - os: ubuntu-latest
-            artifact: REAPER-Preference-Setter-Linux
+  create_release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          draft: true
+          prerelease: false
+          generate_release_notes: true
 
-    runs-on: ${{ matrix.os }}
+  build_macos:
+    needs: create_release
+    runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -30,32 +36,101 @@ jobs:
         run: pip install pyinstaller
 
       - name: Build executable
-        run: pyinstaller --onefile --console --name "${{ matrix.artifact }}" configure_reaper.py
+        run: pyinstaller --onefile --console --name "REAPER-Preference-Setter" configure_reaper.py
 
-      - name: Ad-hoc codesign (macOS)
-        if: runner.os == 'macOS'
-        run: codesign --force --sign - "dist/${{ matrix.artifact }}"
+      - name: Import Apple Certificate
+        run: |
+          if security list-keychains | grep -q "github_build.keychain"; then
+            security delete-keychain github_build.keychain
+          fi
+          security create-keychain -p "" github_build.keychain
+          security default-keychain -s github_build.keychain
+          security set-keychain-settings -lut 21600 github_build.keychain
+          echo "${{ secrets.APPLE_CERTIFICATE }}" | base64 --decode > apple_certificate.p12
+          security import apple_certificate.p12 -k github_build.keychain -P "${{ secrets.APPLE_CERTIFICATE_PASSWORD }}" \
+            -t cert -f pkcs12 -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/xcrun
+          security unlock-keychain -p "" github_build.keychain
+          security set-key-partition-list -S 'apple-tool:,apple:' -s -k "" github_build.keychain
+          security list-keychain -d user -s github_build.keychain 'login-keychain'
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact }}
-          path: dist/${{ matrix.artifact }}*
+      - name: Unlock keychain
+        run: |
+          security unlock-keychain -p "" github_build.keychain
+          security set-key-partition-list -S apple-tool:,apple: -k "" -D "Developer" -t private github_build.keychain
 
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+      - name: Codesign executable
+        run: |
+          codesign -s "${{ secrets.APPLE_CERTIFICATE_NAME }}" \
+            --entitlements entitlements.plist \
+            --force \
+            --timestamp \
+            --options runtime \
+            "dist/REAPER-Preference-Setter"
+          codesign --verify --verbose=4 "dist/REAPER-Preference-Setter"
 
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
+      - name: Zip for notarization
+        run: |
+          ditto -c -k "dist/REAPER-Preference-Setter" "REAPER-Preference-Setter-macOS.zip"
 
-      - name: Create Release
+      - name: Notarize and staple
+        run: |
+          xcrun notarytool submit "REAPER-Preference-Setter-macOS.zip" \
+            --apple-id "${{ secrets.APPLE_DEVELOPER_ID_USER }}" \
+            --password "${{ secrets.APPLE_DEVELOPER_ID_PASSWORD }}" \
+            --team-id "${{ secrets.APPLE_DEVELOPER_ID_TEAM }}" \
+            --wait --verbose
+
+      - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*
-          generate_release_notes: true
+          draft: true
+          files: |
+            REAPER-Preference-Setter-macOS.zip
+
+  build_windows:
+    needs: create_release
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build executable
+        run: pyinstaller --onefile --console --name "REAPER-Preference-Setter" configure_reaper.py
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            dist/REAPER-Preference-Setter.exe
+
+  build_linux:
+    needs: create_release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build executable
+        run: pyinstaller --onefile --console --name "REAPER-Preference-Setter" configure_reaper.py
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            dist/REAPER-Preference-Setter
